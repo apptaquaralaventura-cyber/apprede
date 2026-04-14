@@ -1,0 +1,6 @@
+{
+  "name": "Rede Play - Gestão Acadêmica",
+  "description": "Sistema completo de gestão de pedidos, clientes e relatórios para a Rede Play Consultoria Acadêmica, utilizando Next.js, Prisma e Supabase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
