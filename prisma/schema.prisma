@@ -39,8 +39,8 @@ model Client {
 model Order {
   id            String    @id @default(cuid())
   orderNumber   String    @unique
-  clientId      String
-  client        Client    @relation(fields: [clientId], references: [id])
+  clientId      String?
+  client        Client?   @relation(fields: [clientId], references: [id])
   userId        String?
   user          User?     @relation(fields: [userId], references: [id])
   projectTitle  String
@@ -49,6 +49,19 @@ model Order {
   priority      String    @default("medium")
   value         Float     @default(0)
   deadline      DateTime?
+  
+  // New fields
+  clientName    String?
+  clientPhone   String?
+  ra            String?
+  course        String?
+  workType      String?
+  paymentStatus String    @default("Pendente")
+  observations  String?
+  projectLevel  Int       @default(1)
+  semester      String?
+  poloCity      String?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   history       OrderHistory[]

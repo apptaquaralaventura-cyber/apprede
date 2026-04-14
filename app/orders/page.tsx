@@ -50,6 +50,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 const orders = [
@@ -61,6 +63,7 @@ const orders = [
     status: 'Concluído',
     priority: 'Alta',
     value: 'R$ 1.200,00',
+    payment: 'PAGO',
   },
   {
     id: 'ORD-002',
@@ -70,6 +73,7 @@ const orders = [
     status: 'Em Andamento',
     priority: 'Média',
     value: 'R$ 850,00',
+    payment: 'Pendente',
   },
   {
     id: 'ORD-003',
@@ -79,24 +83,7 @@ const orders = [
     status: 'Pendente',
     priority: 'Baixa',
     value: 'R$ 450,00',
-  },
-  {
-    id: 'ORD-004',
-    client: 'Diego Santos',
-    project: 'Dissertação de Mestrado',
-    date: '2024-04-14',
-    status: 'Em Andamento',
-    priority: 'Alta',
-    value: 'R$ 3.500,00',
-  },
-  {
-    id: 'ORD-005',
-    client: 'Elena Martins',
-    project: 'Projeto de Pesquisa',
-    date: '2024-04-15',
-    status: 'Pendente',
-    priority: 'Média',
-    value: 'R$ 600,00',
+    payment: 'NAO PAGO',
   },
 ];
 
@@ -104,6 +91,13 @@ const statusStyles = {
   'Concluído': 'bg-emerald-100 text-emerald-700 border-emerald-200',
   'Em Andamento': 'bg-blue-100 text-blue-700 border-blue-200',
   'Pendente': 'bg-amber-100 text-amber-700 border-amber-200',
+};
+
+const paymentStyles = {
+  'PAGO': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  'NAO PAGO': 'bg-red-100 text-red-700 border-red-200',
+  'Pendente': 'bg-amber-100 text-amber-700 border-amber-200',
+  'CONCLUIDO': 'bg-blue-100 text-blue-700 border-blue-200',
 };
 
 const priorityStyles = {
@@ -135,52 +129,110 @@ export default function OrdersPage() {
                   Novo Pedido
                 </Button>
               } />
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
                 <DialogHeader>
                   <DialogTitle>Criar Novo Pedido</DialogTitle>
                   <DialogDescription>
                     Preencha os detalhes do novo projeto acadêmico.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium">Cliente</label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o cliente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Ana Silva</SelectItem>
-                        <SelectItem value="2">Bruno Costa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium">Título do Projeto</label>
-                    <Input placeholder="Ex: TCC Engenharia" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <label className="text-sm font-medium">Prioridade</label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Prioridade" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Baixa</SelectItem>
-                          <SelectItem value="medium">Média</SelectItem>
-                          <SelectItem value="high">Alta</SelectItem>
-                        </SelectContent>
-                      </Select>
+                <ScrollArea className="pr-4 max-h-[60vh]">
+                  <div className="grid gap-6 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Nome do Cliente</label>
+                        <Input placeholder="Nome completo" />
+                      </div>
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Telefone</label>
+                        <Input placeholder="(00) 00000-0000" />
+                      </div>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">RA (Registro Acadêmico)</label>
+                        <Input placeholder="Número do RA" />
+                      </div>
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Curso</label>
+                        <Input placeholder="Ex: Engenharia Civil" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Tipo de Trabalho</label>
+                        <Input placeholder="Ex: TCC, Artigo, Relatório" />
+                      </div>
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Pagamento</label>
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Status do pagamento" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PAGO">PAGO</SelectItem>
+                            <SelectItem value="NAO PAGO">NAO PAGO</SelectItem>
+                            <SelectItem value="Pendente">Pendente</SelectItem>
+                            <SelectItem value="CONCLUIDO">CONCLUIDO</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Nível do Projeto</label>
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Nível" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                              <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Semestre</label>
+                        <Input placeholder="Ex: 5º" />
+                      </div>
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Polo/Cidade</label>
+                        <Input placeholder="Cidade" />
+                      </div>
+                    </div>
+
                     <div className="grid gap-2">
-                      <label className="text-sm font-medium">Valor</label>
-                      <Input type="number" placeholder="0.00" />
+                      <label className="text-sm font-medium">Observações</label>
+                      <Textarea placeholder="Detalhes adicionais do trabalho..." className="min-h-[100px]" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Prioridade</label>
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Prioridade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Baixa</SelectItem>
+                            <SelectItem value="medium">Média</SelectItem>
+                            <SelectItem value="high">Alta</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Valor</label>
+                        <Input type="number" placeholder="0.00" />
+                      </div>
                     </div>
                   </div>
-                </div>
+                </ScrollArea>
                 <DialogFooter>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 w-full">Criar Pedido</Button>
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 w-full">Registrar Pedido</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -224,8 +276,8 @@ export default function OrdersPage() {
                 <TableHead className="font-bold">ID</TableHead>
                 <TableHead className="font-bold">Cliente / Projeto</TableHead>
                 <TableHead className="font-bold">Data</TableHead>
+                <TableHead className="font-bold">Pagamento</TableHead>
                 <TableHead className="font-bold">Status</TableHead>
-                <TableHead className="font-bold">Prioridade</TableHead>
                 <TableHead className="font-bold">Valor</TableHead>
                 <TableHead className="text-right font-bold">Ações</TableHead>
               </TableRow>
@@ -242,38 +294,39 @@ export default function OrdersPage() {
                   </TableCell>
                   <TableCell className="text-slate-600">{order.date}</TableCell>
                   <TableCell>
+                    <Badge variant="outline" className={cn("font-medium", paymentStyles[order.payment as keyof typeof paymentStyles])}>
+                      {order.payment}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
                     <Badge variant="outline" className={cn("font-medium", statusStyles[order.status as keyof typeof statusStyles])}>
                       {order.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={cn("font-medium", priorityStyles[order.priority as keyof typeof priorityStyles])}>
-                      {order.priority}
-                    </Badge>
-                  </TableCell>
                   <TableCell className="font-bold text-slate-900">{order.value}</TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger render={
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      } />
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2">
-                          <Eye className="w-4 h-4" /> Visualizar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
-                          <Edit className="w-4 h-4" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2 text-red-600 focus:text-red-600">
-                          <Trash2 className="w-4 h-4" /> Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600">
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger render={
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        } />
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="gap-2">
+                            <Eye className="w-4 h-4" /> Detalhes
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
