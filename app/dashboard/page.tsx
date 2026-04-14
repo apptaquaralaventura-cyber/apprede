@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   Users, 
@@ -8,7 +8,8 @@ import {
   DollarSign,
   ArrowUpRight,
   ArrowDownRight,
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -26,61 +27,108 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import DashboardLayout from '@/components/DashboardLayout';
 import { cn } from '@/lib/utils';
 
-const stats = [
-  { 
-    title: 'Total de Pedidos', 
-    value: '1,284', 
-    change: '+12.5%', 
-    trend: 'up', 
-    icon: ClipboardCheck,
-    color: 'text-blue-600',
-    bg: 'bg-blue-100'
-  },
-  { 
-    title: 'Clientes Ativos', 
-    value: '452', 
-    change: '+3.2%', 
-    trend: 'up', 
-    icon: Users,
-    color: 'text-purple-600',
-    bg: 'bg-purple-100'
-  },
-  { 
-    title: 'Faturamento Mensal', 
-    value: 'R$ 45.200', 
-    change: '+18.7%', 
-    trend: 'up', 
-    icon: DollarSign,
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-100'
-  },
-  { 
-    title: 'Pedidos Pendentes', 
-    value: '24', 
-    change: '-5.4%', 
-    trend: 'down', 
-    icon: Clock,
-    color: 'text-amber-600',
-    bg: 'bg-amber-100'
-  },
-];
+import { getOrders } from '@/lib/actions/orders';
 
-const revenueData = [
-  { name: 'Jan', value: 32000 },
-  { name: 'Fev', value: 38000 },
-  { name: 'Mar', value: 35000 },
-  { name: 'Abr', value: 45200 },
-  { name: 'Mai', value: 42000 },
-  { name: 'Jun', value: 48000 },
-];
-
-const orderStatusData = [
-  { name: 'Concluídos', value: 65, color: '#10b981' },
-  { name: 'Em Andamento', value: 25, color: '#3b82f6' },
-  { name: 'Pendentes', value: 10, color: '#f59e0b' },
-];
+const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState<any[]>([]);
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [orderStatusData, setOrderStatusData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      const orders = await getOrders();
+      
+      // Calculate Stats
+      const totalOrders = orders.length;
+      const pendingOrders = orders.filter(o => o.status === 'Pendente').length;
+      const totalRevenue = orders.reduce((acc, o) => acc + (o.value || 0), 0);
+      
+      // Mocking change for now, in real app would compare with last month
+      setStats([
+        { 
+          title: 'Total de Pedidos', 
+          value: totalOrders.toString(), 
+          change: '+0%', 
+          trend: 'up', 
+          icon: ClipboardCheck,
+          color: 'text-blue-600',
+          bg: 'bg-blue-100'
+        },
+        { 
+          title: 'Clientes Ativos', 
+          value: new Set(orders.map(o => o.clientName)).size.toString(), 
+          change: '+0%', 
+          trend: 'up', 
+          icon: Users,
+          color: 'text-purple-600',
+          bg: 'bg-purple-100'
+        },
+        { 
+          title: 'Faturamento Total', 
+          value: `R$ ${totalRevenue.toLocaleString('pt-BR')}`, 
+          change: '+0%', 
+          trend: 'up', 
+          icon: DollarSign,
+          color: 'text-emerald-600',
+          bg: 'bg-emerald-100'
+        },
+        { 
+          title: 'Pedidos Pendentes', 
+          value: pendingOrders.toString(), 
+          change: '0%', 
+          trend: 'down', 
+          icon: Clock,
+          color: 'text-amber-600',
+          bg: 'bg-amber-100'
+        },
+      ]);
+
+      // Calculate Revenue Data (last 6 months)
+      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const currentMonth = new Date().getMonth();
+      const last6Months = [];
+      for (let i = 5; i >= 0; i--) {
+        const m = (currentMonth - i + 12) % 12;
+        const monthName = months[m];
+        const monthRevenue = orders
+          .filter(o => new Date(o.createdAt).getMonth() === m)
+          .reduce((acc, o) => acc + (o.value || 0), 0);
+        last6Months.push({ name: monthName, value: monthRevenue });
+      }
+      setRevenueData(last6Months);
+
+      // Calculate Order Status Data
+      const statuses = ['Concluído', 'Em Andamento', 'Pendente', 'Atrasado'];
+      const statusCounts = statuses.map(s => ({
+        name: s,
+        value: orders.filter(o => o.status === s).length
+      }));
+      const total = statusCounts.reduce((acc, s) => acc + s.value, 0);
+      setOrderStatusData(statusCounts.map((s, i) => ({
+        ...s,
+        percentage: total > 0 ? Math.round((s.value / total) * 100) : 0,
+        color: COLORS[i]
+      })));
+
+      setIsLoading(false);
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[80vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      </DashboardLayout>
+    );
+  }
   return (
     <DashboardLayout>
       <div className="space-y-8">

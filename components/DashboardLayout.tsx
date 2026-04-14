@@ -31,6 +31,7 @@ const navigation = [
   { name: 'Pedidos', href: '/orders', icon: ClipboardList },
   { name: 'Clientes', href: '/clients', icon: Users },
   { name: 'Estoque', href: '/inventory', icon: Package },
+  { name: 'Funcionários', href: '/admin/employees', icon: Users },
   { name: 'Administração', href: '/admin', icon: Settings },
 ];
 

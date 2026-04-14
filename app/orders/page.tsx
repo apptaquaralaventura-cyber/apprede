@@ -55,7 +55,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const orders: any[] = [];
+import { 
+  getOrders, 
+  createOrder, 
+  updateOrder, 
+  deleteOrder, 
+  updateOrderStatus, 
+  updateOrderPayment 
+} from '@/lib/actions/orders';
 
 const statusStyles = {
   'Concluído': 'bg-[#00c875] text-white border-transparent',
@@ -76,6 +83,7 @@ export default function OrdersPage() {
   const [orderList, setOrderList] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     clientName: '',
@@ -94,36 +102,46 @@ export default function OrdersPage() {
     status: 'Pendente'
   });
 
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    setIsLoading(true);
+    const data = await getOrders();
+    setOrderList(data.map(o => ({
+      ...o,
+      client: o.clientName || 'N/A',
+      project: o.projectTitle || o.workType || 'N/A',
+      date: new Date(o.createdAt).toLocaleDateString('pt-BR'),
+      value: `R$ ${o.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      payment: o.paymentStatus,
+    })));
+    setIsLoading(false);
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingOrder) {
-      setOrderList(prev => prev.map(o => o.id === editingOrder.id ? {
-        ...o,
-        client: formData.clientName,
-        project: formData.projectTitle || formData.workType,
-        payment: formData.paymentStatus,
-        status: formData.status,
-        priority: formData.priority === 'high' ? 'Alta' : formData.priority === 'medium' ? 'Média' : 'Baixa',
-        value: `R$ ${parseFloat(formData.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-      } : o));
-      toast.success('Pedido atualizado com sucesso!');
+      const res = await updateOrder(editingOrder.id, formData);
+      if (res.success) {
+        toast.success('Pedido atualizado com sucesso!');
+        fetchOrders();
+      } else {
+        toast.error(res.error || 'Erro ao atualizar');
+      }
     } else {
-      const newOrder = {
-        id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
-        client: formData.clientName,
-        project: formData.projectTitle || formData.workType,
-        date: new Date().toLocaleDateString('pt-BR'),
-        status: formData.status || 'Pendente',
-        priority: formData.priority === 'high' ? 'Alta' : formData.priority === 'medium' ? 'Média' : 'Baixa',
-        value: `R$ ${parseFloat(formData.value || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        payment: formData.paymentStatus,
-      };
-      setOrderList(prev => [newOrder, ...prev]);
-      toast.success('Novo pedido registrado!');
+      const res = await createOrder(formData);
+      if (res.success) {
+        toast.success('Novo pedido registrado!');
+        fetchOrders();
+      } else {
+        toast.error(res.error || 'Erro ao criar');
+      }
     }
     resetForm();
   };
@@ -152,43 +170,54 @@ export default function OrdersPage() {
   const handleEdit = (order: any) => {
     setEditingOrder(order);
     setFormData({
-      clientName: order.client,
-      clientPhone: '',
-      ra: '',
-      course: '',
-      workType: order.project,
-      paymentStatus: order.payment,
-      projectLevel: '1',
-      semester: '',
-      poloCity: '',
-      observations: '',
+      clientName: order.clientName || order.client,
+      clientPhone: order.clientPhone || '',
+      ra: order.ra || '',
+      course: order.course || '',
+      workType: order.workType || order.project,
+      paymentStatus: order.paymentStatus || order.payment,
+      projectLevel: (order.projectLevel || 1).toString(),
+      semester: order.semester || '',
+      poloCity: order.poloCity || '',
+      observations: order.observations || '',
       priority: order.priority === 'Alta' ? 'high' : order.priority === 'Média' ? 'medium' : 'low',
-      value: order.value.replace('R$ ', '').replace(/\./g, '').replace(',', '.'),
-      projectTitle: order.project,
+      value: (order.value || 0).toString(),
+      projectTitle: order.projectTitle || order.project,
       status: order.status
     });
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setOrderList(prev => prev.filter(o => o.id !== id));
-    toast.error('Pedido excluído com sucesso');
+  const handleDelete = async (id: string) => {
+    const res = await deleteOrder(id);
+    if (res.success) {
+      toast.error('Pedido excluído com sucesso');
+      fetchOrders();
+    } else {
+      toast.error(res.error || 'Erro ao excluir');
+    }
   };
 
-  const togglePayment = (id: string, current: string) => {
+  const togglePayment = async (id: string, current: string) => {
     const statuses = ['Pendente', 'PAGO', 'NAO PAGO', 'CONCLUIDO'];
     const currentIndex = statuses.indexOf(current);
     const nextStatus = statuses[(currentIndex + 1) % statuses.length];
-    setOrderList(prev => prev.map(o => o.id === id ? { ...o, payment: nextStatus } : o));
-    toast.info(`Pagamento alterado para ${nextStatus}`, { duration: 1000 });
+    const res = await updateOrderPayment(id, nextStatus);
+    if (res.success) {
+      toast.info(`Pagamento alterado para ${nextStatus}`, { duration: 1000 });
+      fetchOrders();
+    }
   };
 
-  const toggleStatus = (id: string, current: string) => {
+  const toggleStatus = async (id: string, current: string) => {
     const statuses = ['Pendente', 'Em Andamento', 'Concluído', 'Atrasado'];
     const currentIndex = statuses.indexOf(current);
     const nextStatus = statuses[(currentIndex + 1) % statuses.length];
-    setOrderList(prev => prev.map(o => o.id === id ? { ...o, status: nextStatus } : o));
-    toast.info(`Status alterado para ${nextStatus}`, { duration: 1000 });
+    const res = await updateOrderStatus(id, nextStatus);
+    if (res.success) {
+      toast.info(`Status alterado para ${nextStatus}`, { duration: 1000 });
+      fetchOrders();
+    }
   };
 
   const filteredOrders = orderList.filter(o => 

@@ -9,26 +9,42 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
+import { createClient } from '@/lib/supabase/client';
+
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
+  const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate login
-    setTimeout(() => {
-      setIsLoading(false);
-      if (email && password) {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        // If Supabase is not configured or user not found, allow demo login
+        if (email === 'admin@redeplay.com' && password === 'admin123') {
+          toast.success('Login de demonstração realizado!');
+          router.push('/dashboard');
+        } else {
+          toast.error(error.message);
+        }
+      } else {
         toast.success('Login realizado com sucesso!');
         router.push('/dashboard');
-      } else {
-        toast.error('Por favor, preencha todos os campos.');
       }
-    }, 1500);
+    } catch (err) {
+      toast.error('Erro ao realizar login');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
