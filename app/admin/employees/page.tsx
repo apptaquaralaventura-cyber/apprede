@@ -43,6 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import DashboardLayout from '@/components/DashboardLayout';
 import { getUsers, createUser, deleteUser } from '@/lib/actions/users';
+import { cn } from '@/lib/utils';
 
 export default function EmployeesPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -108,12 +109,12 @@ export default function EmployeesPage() {
             <p className="text-slate-500">Gerencie a equipe e permissões de acesso.</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
+            <DialogTrigger render={
               <Button className="bg-blue-600 hover:bg-blue-700 gap-2">
                 <UserPlus className="w-4 h-4" />
                 Novo Funcionário
               </Button>
-            </DialogTrigger>
+            } />
             <DialogContent>
               <form onSubmit={handleSubmit}>
                 <DialogHeader>
@@ -144,7 +145,7 @@ export default function EmployeesPage() {
                   </div>
                   <div className="grid gap-2">
                     <label className="text-sm font-medium">Nível de Acesso</label>
-                    <Select value={formData.role} onValueChange={(v) => handleInputChange('role', v)}>
+                    <Select value={formData.role} onValueChange={(v) => handleInputChange('role', v ?? '')}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o cargo" />
                       </SelectTrigger>
