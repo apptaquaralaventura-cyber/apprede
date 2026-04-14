@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const orders = [
@@ -108,6 +109,116 @@ const priorityStyles = {
 
 export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [orderList, setOrderList] = useState(orders);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<any>(null);
+
+  const [formData, setFormData] = useState({
+    clientName: '',
+    clientPhone: '',
+    ra: '',
+    course: '',
+    workType: '',
+    paymentStatus: 'Pendente',
+    projectLevel: '1',
+    semester: '',
+    poloCity: '',
+    observations: '',
+    priority: 'medium',
+    value: '',
+    projectTitle: ''
+  });
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingOrder) {
+      setOrderList(prev => prev.map(o => o.id === editingOrder.id ? {
+        ...o,
+        client: formData.clientName,
+        project: formData.projectTitle || formData.workType,
+        payment: formData.paymentStatus,
+        value: `R$ ${parseFloat(formData.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+      } : o));
+      toast.success('Pedido atualizado com sucesso!');
+    } else {
+      const newOrder = {
+        id: `ORD-00${orderList.length + 1}`,
+        client: formData.clientName,
+        project: formData.projectTitle || formData.workType,
+        date: new Date().toISOString().split('T')[0],
+        status: 'Pendente',
+        priority: formData.priority === 'high' ? 'Alta' : formData.priority === 'medium' ? 'Média' : 'Baixa',
+        value: `R$ ${parseFloat(formData.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        payment: formData.paymentStatus,
+      };
+      setOrderList(prev => [newOrder, ...prev]);
+      toast.success('Novo pedido registrado!');
+    }
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setFormData({
+      clientName: '',
+      clientPhone: '',
+      ra: '',
+      course: '',
+      workType: '',
+      paymentStatus: 'Pendente',
+      projectLevel: '1',
+      semester: '',
+      poloCity: '',
+      observations: '',
+      priority: 'medium',
+      value: '',
+      projectTitle: ''
+    });
+    setEditingOrder(null);
+    setIsDialogOpen(false);
+  };
+
+  const handleEdit = (order: any) => {
+    setEditingOrder(order);
+    setFormData({
+      clientName: order.client,
+      clientPhone: '',
+      ra: '',
+      course: '',
+      workType: order.project,
+      paymentStatus: order.payment,
+      projectLevel: '1',
+      semester: '',
+      poloCity: '',
+      observations: '',
+      priority: order.priority === 'Alta' ? 'high' : order.priority === 'Média' ? 'medium' : 'low',
+      value: order.value.replace('R$ ', '').replace('.', '').replace(',', '.'),
+      projectTitle: order.project
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este pedido?')) {
+      setOrderList(prev => prev.filter(o => o.id !== id));
+      toast.error('Pedido excluído com sucesso');
+    }
+  };
+
+  const togglePayment = (id: string, current: string) => {
+    const nextStatus = current === 'PAGO' ? 'NAO PAGO' : current === 'NAO PAGO' ? 'Pendente' : 'PAGO';
+    setOrderList(prev => prev.map(o => o.id === id ? { ...o, payment: nextStatus } : o));
+    toast.info(`Status de pagamento alterado para ${nextStatus}`);
+  };
+
+  const filteredOrders = orderList.filter(o => 
+    o.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    o.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    o.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <DashboardLayout>
@@ -122,118 +233,164 @@ export default function OrdersPage() {
               <Download className="w-4 h-4" />
               Exportar
             </Button>
-            <Dialog>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              if (!open) resetForm();
+              setIsDialogOpen(open);
+            }}>
               <DialogTrigger render={
-                <Button className="bg-blue-600 hover:bg-blue-700 gap-2">
+                <Button className="bg-blue-600 hover:bg-blue-700 gap-2" onClick={() => setIsDialogOpen(true)}>
                   <Plus className="w-4 h-4" />
                   Novo Pedido
                 </Button>
               } />
               <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
-                <DialogHeader>
-                  <DialogTitle>Criar Novo Pedido</DialogTitle>
-                  <DialogDescription>
-                    Preencha os detalhes do novo projeto acadêmico.
-                  </DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="pr-4 max-h-[60vh]">
-                  <div className="grid gap-6 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Nome do Cliente</label>
-                        <Input placeholder="Nome completo" />
+                <form onSubmit={handleSubmit}>
+                  <DialogHeader>
+                    <DialogTitle>{editingOrder ? 'Editar Pedido' : 'Criar Novo Pedido'}</DialogTitle>
+                    <DialogDescription>
+                      Preencha os detalhes do projeto acadêmico.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="pr-4 max-h-[60vh]">
+                    <div className="grid gap-6 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Nome do Cliente</label>
+                          <Input 
+                            value={formData.clientName}
+                            onChange={(e) => handleInputChange('clientName', e.target.value)}
+                            placeholder="Nome completo" 
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Telefone</label>
+                          <Input 
+                            value={formData.clientPhone}
+                            onChange={(e) => handleInputChange('clientPhone', e.target.value)}
+                            placeholder="(00) 00000-0000" 
+                          />
+                        </div>
                       </div>
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Telefone</label>
-                        <Input placeholder="(00) 00000-0000" />
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">RA (Registro Acadêmico)</label>
-                        <Input placeholder="Número do RA" />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">RA (Registro Acadêmico)</label>
+                          <Input 
+                            value={formData.ra}
+                            onChange={(e) => handleInputChange('ra', e.target.value)}
+                            placeholder="Número do RA" 
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Curso</label>
+                          <Input 
+                            value={formData.course}
+                            onChange={(e) => handleInputChange('course', e.target.value)}
+                            placeholder="Ex: Engenharia Civil" 
+                          />
+                        </div>
                       </div>
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Curso</label>
-                        <Input placeholder="Ex: Engenharia Civil" />
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Tipo de Trabalho</label>
-                        <Input placeholder="Ex: TCC, Artigo, Relatório" />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Tipo de Trabalho</label>
+                          <Input 
+                            value={formData.workType}
+                            onChange={(e) => handleInputChange('workType', e.target.value)}
+                            placeholder="Ex: TCC, Artigo, Relatório" 
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Pagamento</label>
+                          <Select value={formData.paymentStatus} onValueChange={(v) => handleInputChange('paymentStatus', v)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Status do pagamento" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="PAGO">PAGO</SelectItem>
+                              <SelectItem value="NAO PAGO">NAO PAGO</SelectItem>
+                              <SelectItem value="Pendente">Pendente</SelectItem>
+                              <SelectItem value="CONCLUIDO">CONCLUIDO</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Pagamento</label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Status do pagamento" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="PAGO">PAGO</SelectItem>
-                            <SelectItem value="NAO PAGO">NAO PAGO</SelectItem>
-                            <SelectItem value="Pendente">Pendente</SelectItem>
-                            <SelectItem value="CONCLUIDO">CONCLUIDO</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Nível do Projeto</label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Nível" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                              <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Nível do Projeto</label>
+                          <Select value={formData.projectLevel} onValueChange={(v) => handleInputChange('projectLevel', v)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Nível" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                                <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Semestre</label>
+                          <Input 
+                            value={formData.semester}
+                            onChange={(e) => handleInputChange('semester', e.target.value)}
+                            placeholder="Ex: 5º" 
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Polo/Cidade</label>
+                          <Input 
+                            value={formData.poloCity}
+                            onChange={(e) => handleInputChange('poloCity', e.target.value)}
+                            placeholder="Cidade" 
+                          />
+                        </div>
                       </div>
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Semestre</label>
-                        <Input placeholder="Ex: 5º" />
-                      </div>
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Polo/Cidade</label>
-                        <Input placeholder="Cidade" />
-                      </div>
-                    </div>
 
-                    <div className="grid gap-2">
-                      <label className="text-sm font-medium">Observações</label>
-                      <Textarea placeholder="Detalhes adicionais do trabalho..." className="min-h-[100px]" />
-                    </div>
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Observações</label>
+                        <Textarea 
+                          value={formData.observations}
+                          onChange={(e) => handleInputChange('observations', e.target.value)}
+                          placeholder="Detalhes adicionais do trabalho..." 
+                          className="min-h-[100px]" 
+                        />
+                      </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Prioridade</label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Prioridade" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Baixa</SelectItem>
-                            <SelectItem value="medium">Média</SelectItem>
-                            <SelectItem value="high">Alta</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Valor</label>
-                        <Input type="number" placeholder="0.00" />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Prioridade</label>
+                          <Select value={formData.priority} onValueChange={(v) => handleInputChange('priority', v)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Prioridade" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="low">Baixa</SelectItem>
+                              <SelectItem value="medium">Média</SelectItem>
+                              <SelectItem value="high">Alta</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Valor</label>
+                          <Input 
+                            type="number" 
+                            value={formData.value}
+                            onChange={(e) => handleInputChange('value', e.target.value)}
+                            placeholder="0.00" 
+                            required
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </ScrollArea>
-                <DialogFooter>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 w-full">Registrar Pedido</Button>
-                </DialogFooter>
+                  </ScrollArea>
+                  <DialogFooter className="mt-6">
+                    <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700">{editingOrder ? 'Salvar Alterações' : 'Registrar Pedido'}</Button>
+                  </DialogFooter>
+                </form>
               </DialogContent>
             </Dialog>
           </div>
@@ -283,7 +440,7 @@ export default function OrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => (
+              {filteredOrders.map((order) => (
                 <TableRow key={order.id} className="hover:bg-slate-50/50 transition-colors">
                   <TableCell className="font-medium text-blue-600">{order.id}</TableCell>
                   <TableCell>
@@ -294,9 +451,15 @@ export default function OrdersPage() {
                   </TableCell>
                   <TableCell className="text-slate-600">{order.date}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={cn("font-medium", paymentStyles[order.payment as keyof typeof paymentStyles])}>
-                      {order.payment}
-                    </Badge>
+                    <button 
+                      onClick={() => togglePayment(order.id, order.payment)}
+                      className="transition-all active:scale-90 hover:brightness-95"
+                      title="Clique para alternar status de pagamento"
+                    >
+                      <Badge variant="outline" className={cn("font-semibold cursor-pointer shadow-sm px-3 py-0.5", paymentStyles[order.payment as keyof typeof paymentStyles])}>
+                        {order.payment}
+                      </Badge>
+                    </button>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={cn("font-medium", statusStyles[order.status as keyof typeof statusStyles])}>
@@ -306,10 +469,20 @@ export default function OrdersPage() {
                   <TableCell className="font-bold text-slate-900">{order.value}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-slate-400 hover:text-blue-600"
+                        onClick={() => handleEdit(order)}
+                      >
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-600">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-slate-400 hover:text-red-600"
+                        onClick={() => handleDelete(order.id)}
+                      >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                       <DropdownMenu>

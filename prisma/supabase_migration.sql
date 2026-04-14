@@ -1,5 +1,8 @@
--- CreateTable
-CREATE TABLE "User" (
+-- Safe Migration Script for Supabase/PostgreSQL
+-- This script handles existing tables and adds missing columns
+
+-- 1. Create Tables if they don't exist
+CREATE TABLE IF NOT EXISTS "User" (
     "id" TEXT NOT NULL,
     "name" TEXT,
     "email" TEXT,
@@ -8,12 +11,10 @@ CREATE TABLE "User" (
     "role" TEXT NOT NULL DEFAULT 'user',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Client" (
+CREATE TABLE IF NOT EXISTS "Client" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -24,15 +25,13 @@ CREATE TABLE "Client" (
     "status" TEXT NOT NULL DEFAULT 'active',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "Client_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Order" (
+CREATE TABLE IF NOT EXISTS "Order" (
     "id" TEXT NOT NULL,
     "orderNumber" TEXT NOT NULL,
-    "clientId" TEXT NOT NULL,
+    "clientId" TEXT,
     "userId" TEXT,
     "projectTitle" TEXT NOT NULL,
     "description" TEXT,
@@ -42,23 +41,19 @@ CREATE TABLE "Order" (
     "deadline" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "OrderHistory" (
+CREATE TABLE IF NOT EXISTS "OrderHistory" (
     "id" TEXT NOT NULL,
     "orderId" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "comment" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT "OrderHistory_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Payment" (
+CREATE TABLE IF NOT EXISTS "Payment" (
     "id" TEXT NOT NULL,
     "orderId" TEXT NOT NULL,
     "amount" DOUBLE PRECISION NOT NULL,
@@ -66,12 +61,10 @@ CREATE TABLE "Payment" (
     "status" TEXT NOT NULL DEFAULT 'pending',
     "transactionId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "InventoryItem" (
+CREATE TABLE IF NOT EXISTS "InventoryItem" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "category" TEXT,
@@ -81,27 +74,67 @@ CREATE TABLE "InventoryItem" (
     "status" TEXT NOT NULL DEFAULT 'in_stock',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "InventoryItem_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+-- 2. Add missing columns to "Order" table if they don't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Order' AND column_name='clientName') THEN
+        ALTER TABLE "Order" ADD COLUMN "clientName" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Order' AND column_name='clientPhone') THEN
+        ALTER TABLE "Order" ADD COLUMN "clientPhone" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Order' AND column_name='ra') THEN
+        ALTER TABLE "Order" ADD COLUMN "ra" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Order' AND column_name='course') THEN
+        ALTER TABLE "Order" ADD COLUMN "course" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Order' AND column_name='workType') THEN
+        ALTER TABLE "Order" ADD COLUMN "workType" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Order' AND column_name='paymentStatus') THEN
+        ALTER TABLE "Order" ADD COLUMN "paymentStatus" TEXT NOT NULL DEFAULT 'Pendente';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Order' AND column_name='observations') THEN
+        ALTER TABLE "Order" ADD COLUMN "observations" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Order' AND column_name='projectLevel') THEN
+        ALTER TABLE "Order" ADD COLUMN "projectLevel" INTEGER NOT NULL DEFAULT 1;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Order' AND column_name='semester') THEN
+        ALTER TABLE "Order" ADD COLUMN "semester" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Order' AND column_name='poloCity') THEN
+        ALTER TABLE "Order" ADD COLUMN "poloCity" TEXT;
+    END IF;
+END $$;
 
--- CreateIndex
-CREATE UNIQUE INDEX "Client_email_key" ON "Client"("email");
+-- 3. Create Indexes safely
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'User_email_key') THEN
+        CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'Client_email_key') THEN
+        CREATE UNIQUE INDEX "Client_email_key" ON "Client"("email");
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'Order_orderNumber_key') THEN
+        CREATE UNIQUE INDEX "Order_orderNumber_key" ON "Order"("orderNumber");
+    END IF;
+END $$;
 
--- CreateIndex
-CREATE UNIQUE INDEX "Order_orderNumber_key" ON "Order"("orderNumber");
+-- 4. Add Foreign Keys safely (dropping and recreating to ensure they match)
+ALTER TABLE "Order" DROP CONSTRAINT IF EXISTS "Order_clientId_fkey";
+ALTER TABLE "Order" ADD CONSTRAINT "Order_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "Order" ADD CONSTRAINT "Order_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
+ALTER TABLE "Order" DROP CONSTRAINT IF EXISTS "Order_userId_fkey";
 ALTER TABLE "Order" ADD CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
+ALTER TABLE "OrderHistory" DROP CONSTRAINT IF EXISTS "OrderHistory_orderId_fkey";
 ALTER TABLE "OrderHistory" ADD CONSTRAINT "OrderHistory_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
+ALTER TABLE "Payment" DROP CONSTRAINT IF EXISTS "Payment_orderId_fkey";
 ALTER TABLE "Payment" ADD CONSTRAINT "Payment_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
